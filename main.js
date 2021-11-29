@@ -1,350 +1,221 @@
-function main() {
-  /** @type {HTMLCanvasElement} */
-  var canvas = document.getElementById("myCanvas");
-  /** @type {WebGLRenderingContext} */
-  var gl = canvas.getContext("webgl");
+var canvas;
+var gl;
+// flattened points and colors to be sent to Vertex Shader
+var points = [];
+var colors = [];
+var points2 = [];
+var colors2 = [];
 
-  //Gelas Kiri
-  var cup1 = [];
-  var color = 211 / 255;
-  var color2 = 170 / 255;
-  var c1_y1 = 0.3;
-  var c1_y2 = 0.3;
-  var c1_x1 = 0.5;
-  var c1_x2 = 0.5;
-  for (var i = 0; i <= 180; i += 1) {
-    var j = ((i + 270) * Math.PI) / 180;
-    var k = ((i + 271) * Math.PI) / 180;
-    var v1 = [
-      Math.sin(j) * 0.175 - c1_x1,
-      Math.cos(j) * 0.05 + c1_y1,
-      color2,
-      color2,
-      color2,
-    ];
+// rotation stuff
+var theta = [ 220, 0, 0 ];
+var theta2 = [ -5, 0, 0 ];
 
-    var v2 = [-c1_x1, c1_y1, color2, color2, color2];
+var thetaLoc;   // rotation uniform
+var cyl_vertices, cyl_colors;
+var cyl_vertices2, cyl_colors2;
+var NumSides = 50;
 
-    var v3 = [
-      Math.sin(k) * 0.175 - c1_x1,
-      Math.cos(k) * 0.05 + c1_y1,
-      color2,
-      color2,
-      color2,
-    ];
+function main(){
+    // Access the canvas through DOM: Document Object Model
+    canvas = document.getElementById('myCanvas');   // The paper
+    gl = canvas.getContext('webgl');                // The brush and the paints
 
-    cup1 = cup1.concat(v1);
-    cup1 = cup1.concat(v2);
-    cup1 = cup1.concat(v3);
-  }
+    // Gelas Kiri
+    var x, z;
+    var angle = 0;
+    var inc = Math.PI * 2.0 / NumSides;
 
-  for (var i = 90; i <= 270; i += 1) {
-    var j = (i * Math.PI) / 180;
-    var k = ((i + 1) * Math.PI) / 180;
-    var v1 = [
-      Math.sin(j) * 0.175 - c1_x2,
-      Math.cos(j) * 0.1 - c1_y2,
-      color,
-      color,
-      color,
-    ];
+    cyl_vertices = new Array(NumSides * 2);
+    cyl_colors   = new Array(NumSides * 2);
 
-    var v2 = [-c1_x2, -c1_y2, color, color, color];
+   // alt_colors = [[1.0, 0.5, 0.5, 1.0], [0.5, 1.0, 0.5, 1.0], [0.5, 0.5, 1.0, 1.0]];
+    alt_colors = [[1.0, 1, 1, 1], [1.0, 1, 1, 1], [1.0, 1, 1, 1]];
+    for(var i_side = 0; i_side < NumSides; i_side++) {
+        x = 0.5 * Math.cos(angle);
+        z = 0.5 * Math.sin(angle);
 
-    var v3 = [
-      Math.sin(k) * 0.175 - c1_x2,
-      Math.cos(k) * 0.1 - c1_y2,
-      color,
-      color,
-      color,
-    ];
+        cyl_vertices[i_side] = vec3(x, 0.8, z);
+        cyl_colors[i_side] = alt_colors[i_side%3];
 
-    cup1 = cup1.concat(v1);
-    cup1 = cup1.concat(v2);
-    cup1 = cup1.concat(v3);
-  }
+        cyl_vertices[i_side+NumSides] = vec3(x, -0.8, z);
+        cyl_colors[i_side+NumSides] = alt_colors[i_side%3];
 
-  var A = cup1.slice(180 * 5 * 3, 180 * 5 * 3 + 5);
-  var B = cup1.slice(181 * 5 * 3, 181 * 5 * 3 + 5);
-  var C = cup1.slice(5, 10);
-  var D = cup1.slice(361 * 5 * 3, 361 * 5 * 3 + 5);
-  var E = cup1.slice(0 * 5 * 3, 0 * 5 * 3 + 5);
+        angle += inc;
+    }
 
-  cup1 = cup1.concat(A);
-  cup1 = cup1.concat(B);
-  cup1 = cup1.concat(C);
-  cup1 = cup1.concat(B);
-  cup1 = cup1.concat(C);
-  cup1 = cup1.concat(D);
-  cup1 = cup1.concat(C);
-  cup1 = cup1.concat(D);
-  cup1 = cup1.concat(E);
+    for(var i_side = 0; i_side < NumSides-1; i_side++) {
+        quad(i_side+1, i_side, NumSides+i_side, NumSides+i_side+1, points, colors,cyl_vertices);
+    }
+    quad(0, NumSides-1, 2*NumSides-1, NumSides, points, colors,cyl_vertices);
 
-  var cup2 = [];
-  var c2_x1 = 0.5;
-  var mul=0.280;
+    // Gelas Kanan
+    var x2, z2;
+    var angle2 = 0;
 
-  // Gelas Kanan
-  // Gelas atas luar
-  for(var i = 0; i<=180; i+=1)
-  {
-      var j = (i + 270) / 180;
-      var k = (i+ 271) / 180;
-      var vertex_1 = [
-        Math.sin(Math.PI * j) * mul + c2_x1 , Math.cos(Math.PI *j) * 0.10 + 0.5, 
-          0.88, 0.87, 0.87,
-      ];
-  
-      var vertex_2 = [
-          0.5, c2_x1, 
-          0.88, 0.87, 0.87,
-      ];
-  
-      var vertex_3 = [
-          Math.sin(Math.PI *k) * mul + c2_x1 , Math.cos(Math.PI *k) * 0.10 + 0.5, 
-          0.88, 0.87, 0.87,
-      ];
-  
-      cup2 = cup2.concat(vertex_1, vertex_2, vertex_3);
-  }
-  
-  
-  // Gelas bawah luar
-  var cup2_x2=0.5;
-  var cup2_y2=-0.09;
-  var cup2_mult=0.190;
-  var cup2_cs=0.15;
-  var colorr=0.7;
-  for(var i = 90; i<=270; i+=1)
-  {
-      var j = i   / 180;
-      var k = (i+1)   / 180;
-      var vertex_1 = [
-          Math.sin(Math.PI *j) * cup2_mult + cup2_x2 , Math.cos(Math.PI *j) * cup2_cs- cup2_y2, 
-          colorr, colorr, colorr,
-      ];
-  
-      var vertex_2 = [
-        cup2_x2, -cup2_y2, 
-        colorr, colorr, colorr,
-      ];
-  
-      var vertex_3 = [
-          Math.sin(Math.PI *k) * cup2_mult + cup2_x2 , Math.cos(Math.PI *k) * cup2_cs - cup2_y2, 
-          colorr, colorr, colorr,
-      ];
-  
-      cup2 = cup2.concat(vertex_1, vertex_2, vertex_3);
-  }
-  
-  var A = cup2.slice(180*5*3, 180*5*3+5);
-  var B = cup2.slice(181*5*3, 181*5*3+5);
-  var C = cup2.slice(5, 10);
-  var D = cup2.slice(361*5*3, 361*5*3+5);
-  var E = cup2.slice(0*5*3, 0*5*3+5);
-  
-  cup2 = cup2.concat(A, B, C);
-  cup2 = cup2.concat(B, C, D);
-  cup2 = cup2.concat(C, D, E);
-  
-  var c2_xd1=0.5;
-  var c2_xd2=0.5;
- 
-  for(var i = 0; i<=180; i+=1)
-  {
-      var j = (i + 270) / 180;
-      var k = (i+ 271) / 180;
-      var vertex_1 = [
-          Math.sin(Math.PI *j) * 0.280 + c2_xd1 , Math.cos(Math.PI *j) * 0.10 +c2_xd2, 
-          colorr, colorr, colorr,
-      ];
-  
-      var vertex_2 = [
-        c2_xd1, c2_xd2, 
-        colorr, colorr, colorr,
-      ];
-  
-      var vertex_3 = [
-          Math.sin(Math.PI *k) * 0.280 + c2_xd1 , Math.cos(Math.PI *k) * 0.10 + c2_xd2, 
-          colorr, colorr, colorr,
-      ];
-  
-      cup2 = cup2.concat(vertex_1, vertex_2, vertex_3);
-  }
-  var mult1=0.280;
-  var mult2=0.350;
-  var coloran=0.78;
-  // Gelas atas dalam
-  for(var i = 90; i<=450; i+=1)
-  {
-      var j = (i + 180) / 180;
-      var k = (i+ 181) / 180;
-      var vertex_1 = [
-          Math.sin(Math.PI *j) * mult1 + 0.5 , Math.cos(Math.PI *j) * mult2 + 0.5, 
-          coloran, coloran, coloran,
-      ];
-  
-      var vertex_2 = [
-          0.5, 0.5, 
-          coloran, coloran, coloran,
-      ];
-  
-      var vertex_3 = [
-        Math.sin(Math.PI *k) * mult1 + 0.5 , Math.cos(Math.PI *k) * mult2 + 0.5, coloran, coloran, coloran,
-      ];
-  
-      cup2 = cup2.concat(vertex_1, vertex_2, vertex_3);
-  }
+    cyl_vertices2 = new Array(NumSides * 2);
+    cyl_colors2   = new Array(NumSides * 2);
 
-  var mult11=0.180;
-  var mult22=0.20;
-  var cup2_color=0.85;
-  var cup2Y=0.43;
-  for(var i = 90; i<=450; i+=1)
-  {
-      var j = (i + 180) / 180;
-      var k = (i+ 181) / 180;
-      var vertex_1 = [
-          Math.sin(Math.PI *j) * mult11 + 0.5 , Math.cos(Math.PI *j) * mult22 + cup2Y, 
-          cup2_color, cup2_color, cup2_color,
-      ];
-  
-      var vertex_2 = [
-          0.5, 0.5, 
-          cup2_color, cup2_color, cup2_color,
-      ];
-  
-      var vertex_3 = [
-        Math.sin(Math.PI *k) * mult11 + 0.5 , Math.cos(Math.PI *k) * mult22 + cup2Y, cup2_color, cup2_color, cup2_color,
-      ];
-  
-      cup2 = cup2.concat(vertex_1, vertex_2, vertex_3);
-  }
-  
-  var vertices = [...cup1, ...cup2];
-  var cup1_len = cup1.length / 5;
-  var cup2_len = cup2.length / 5;
-  
+    alt_colors2 = [[1.0, 1, 1, 1], [1.0, 1, 1, 1], [1.0, 1, 1, 1]];
+    for(var i_side = 0; i_side < NumSides; i_side++) {
+        x2 = 0.5 * Math.cos(angle2);
+        z2 = 0.5 * Math.sin(angle2);
 
-  var buffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+        cyl_vertices2[i_side] = vec3(x2, 0.8, z2);
+        cyl_colors2[i_side] = alt_colors[i_side%3];
 
-  var vertexShaderCode = `
-  attribute vec2 aPosition;
-  attribute vec3 aColor;
-  varying vec3 vColor;
-  uniform mat4 u_matrix;
+        cyl_vertices2[i_side+NumSides] = vec3(x2, -0.8, z2);
+        cyl_colors2[i_side+NumSides] = alt_colors[i_side%3];
 
-  void main(){
-      gl_Position = u_matrix * vec4(aPosition, 0, 1);
-      vColor = aColor;
-  }`;
+        angle2 += inc;
+    }
 
-  var vertexShader = gl.createShader(gl.VERTEX_SHADER);
-  gl.shaderSource(vertexShader, vertexShaderCode);
-  gl.compileShader(vertexShader);
+    for(var i_side = 0; i_side < NumSides-1; i_side++) {
+        quad(i_side+1, i_side, NumSides+i_side, NumSides+i_side+1, points2, colors2, cyl_vertices2);
+    }
+    quad(0, NumSides-1, 2*NumSides-1, NumSides, points2, colors2, cyl_vertices2);
 
-  var compiled = gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS);
-  if (!compiled) {
-    console.error(gl.getShaderInfoLog(vertexShader));
-  }
+    var len = 6*NumSides;
 
-  var fragmentShaderCode = `
-  precision mediump float;
-  varying vec3 vColor;
+    var vertices = [...points, ...points2];
+    var totcolors = [...colors, ...colors2];
 
-  void main(){
-      gl_FragColor = vec4(vColor, 1.0);
-  }
-  `;
+    var cBuffer = gl.createBuffer();
+    gl.bindBuffer( gl.ARRAY_BUFFER, cBuffer );
+    gl.bufferData( gl.ARRAY_BUFFER, flatten(totcolors), gl.STATIC_DRAW );
 
-  var fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
-  gl.shaderSource(fragmentShader, fragmentShaderCode);
-  gl.compileShader(fragmentShader);
 
-  compiled = gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS);
-  if (!compiled) {
-    console.error(gl.getShaderInfoLog(fragmentShader));
-  }
+    var vertexShaderSource = `
+    attribute  vec4 vPosition;
+    attribute  vec4 vColor;
+    varying vec4 fColor;
+    
+    uniform vec3 theta;
+    uniform mat4 u_matrix;
+    void main() {
+        // Compute the sines and cosines of theta for each of
+        //   the three axes in one computation.
+        vec3 angles = radians( theta );
+        vec3 c = cos( angles );
+        vec3 s = sin( angles );
+    
+        // Remeber: thse matrices are column-major
+        mat4 rx = mat4( 1.0,  0.0,  0.0, 0.0,
+                        0.0,  c.x,  s.x, 0.0,
+                        0.0, -s.x,  c.x, 0.0,
+                        0.0,  0.0,  0.0, 1.0 );
+    
+        mat4 ry = mat4( c.y, 0.0, -s.y, 0.0,
+                        0.0, 1.0,  0.0, 0.0,
+                        s.y, 0.0,  c.y, 0.0,
+                        0.0, 0.0,  0.0, 1.0 );
+    
+    
+        mat4 rz = mat4( c.z, -s.z, 0.0, 0.0,
+                        s.z,  c.z, 0.0, 0.0,
+                        0.0,  0.0, 1.0, 0.0,
+                        0.0,  0.0, 0.0, 1.0 );
+        float scale = 0.5;
+        mat4 dilationMatrix = mat4(
+            scale, 0., 0., 0.,
+            0., scale, 0., 0.,
+            0., 0., scale, 0.,
+            0., 0., 0., 1.
+        );
 
-  var shaderProgram = gl.createProgram();
-  gl.attachShader(shaderProgram, vertexShader);
-  gl.attachShader(shaderProgram, fragmentShader);
-  gl.linkProgram(shaderProgram);
+        fColor = vColor;
+        gl_Position = dilationMatrix * rz * ry * rx * u_matrix * vPosition;
+     } 
+    `;
 
-  var linked = gl.getProgramParameter(shaderProgram, gl.LINK_STATUS);
-  if (!linked) {
-    console.error(gl.getProgramInfoLog(shaderProgram));
-  }
+    var fragmentShaderSource = `
+        precision mediump float;
+        varying vec4 fColor;
 
-  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-  var aPosition = gl.getAttribLocation(shaderProgram, `aPosition`);
-  gl.vertexAttribPointer(
-    aPosition,
-    2,
-    gl.FLOAT,
-    false,
-    5 * Float32Array.BYTES_PER_ELEMENT,
-    0
-  );
-  gl.enableVertexAttribArray(aPosition);
+        void main() {
+            gl_FragColor = fColor;
+        }
+    `;
+    
+    // Create .c in GPU
+    var vertexShader = gl.createShader(gl.VERTEX_SHADER);
+    gl.shaderSource(vertexShader, vertexShaderSource);
+    var fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+    gl.shaderSource(fragmentShader, fragmentShaderSource);
 
-  var aColor = gl.getAttribLocation(shaderProgram, `aColor`);
-  gl.vertexAttribPointer(
-    aColor,
-    3,
-    gl.FLOAT,
-    false,
-    5 * Float32Array.BYTES_PER_ELEMENT,
-    2 * Float32Array.BYTES_PER_ELEMENT
-  );
-  gl.enableVertexAttribArray(aColor);
+    // Compile .c into .o
+    gl.compileShader(vertexShader);
+    gl.compileShader(fragmentShader);
 
-  let change = 0;
-  let speed = 0.0093;
-  let turn = 0.15;
-  let back = 0.82;
-  function drawScene() {
-    if (change >= turn || change <= -back) speed = -speed;
-    change += speed;
-    gl.useProgram(shaderProgram);
-    const leftObject = [
-      1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0,
-      1.0,
-    ];
+    // Prepare a .exe shell (shader program)
+    var shaderProgram = gl.createProgram();
 
-    const rightObject = [
-      1.0,
-      0.0,
-      0.0,
-      0.0,
-      0.0,
-      1.0,
-      0.0,
-      0.0,
-      0.0,
-      0.0,
-      1.0,
-      0.0,
-      0.0,
-      change,
-      0.0,
-      1.0,
-    ];
+    // Put the two .o files into the shell
+    gl.attachShader(shaderProgram, vertexShader);
+    gl.attachShader(shaderProgram, fragmentShader);
 
-    gl.clearColor(0.0, 0.0, 0.0, 1);
-    gl.clear(gl.COLOR_BUFFER_BIT);
+    // Link the two .o files, so together they can be a runnable program/context.
+    gl.linkProgram(shaderProgram);
 
-    const u_matrix = gl.getUniformLocation(shaderProgram, "u_matrix");
-    gl.uniformMatrix4fv(u_matrix, false, leftObject);
+    // Start using the context (analogy: start using the paints and the brushes)
+    // gl.useProgram(shaderProgram);
 
-    gl.drawArrays(gl.TRIANGLES, 0, cup1_len);
+    var vColor = gl.getAttribLocation( shaderProgram, "vColor" );
+    gl.vertexAttribPointer( vColor, 4, gl.FLOAT, false, 0, 0 );
+    gl.enableVertexAttribArray( vColor );
+    
+    var vBuffer = gl.createBuffer();
+    gl.bindBuffer( gl.ARRAY_BUFFER, vBuffer );
+    gl.bufferData( gl.ARRAY_BUFFER, flatten(vertices), gl.STATIC_DRAW );
+    
+    gl.bindBuffer( gl.ARRAY_BUFFER, vBuffer );
+    var vPosition = gl.getAttribLocation( shaderProgram, "vPosition" );
+    gl.vertexAttribPointer( vPosition, 3, gl.FLOAT, false, 0, 0 );
+    gl.enableVertexAttribArray( vPosition );
 
-    gl.uniformMatrix4fv(u_matrix, false, rightObject);
-    gl.drawArrays(gl.TRIANGLES, cup1_len, cup2_len);
-    requestAnimationFrame(drawScene);
-  }
+    thetaLoc = gl.getUniformLocation(shaderProgram, "theta"); 
+    gl.clearColor( 0.2, 0.2, 0.2, 1.0 );
+    
+    function render()
+    {
+        gl.clear( gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        gl.useProgram(shaderProgram);
+        gl.uniform3fv(thetaLoc, theta);
+        const u_matrix = gl.getUniformLocation(shaderProgram, "u_matrix");
+        const leftObject = [1., 0., 0., 0.,
+                0., 1., 0., 0.,
+                0., 0., 1., 0.,
+                -1.2, 0, 0, 1.];
 
-  drawScene();
+        const rightObject = [1., 0., 0., 0.,
+            0., 1., 0., 0.,
+            0., 0., 1., 0.,
+            1.2, 0, 0, 1.];
+        gl.uniformMatrix4fv(u_matrix, false, leftObject);
+        gl.drawArrays( gl.TRIANGLES, 0, len );
+
+        gl.uniform3fv(thetaLoc, theta2);
+        gl.uniformMatrix4fv(u_matrix, false, rightObject);
+        gl.drawArrays( gl.TRIANGLES, len, len );
+        requestAnimationFrame( render );
+    }
+    render();
+}
+
+function quad(a, b, c, d, points, colors, cyl_vertices) 
+{
+    // We need to parition the quad into two triangles in order for
+    // WebGL to be able to render it.  In this case, we create two
+    // triangles from the quad indices
+
+    //vertex color assigned by the index of the vertex
+
+    var indices = [ a, b, c, a, c, d ];
+   //  var democolors = [ [0,0,0,1], [1,0,0,1], [1,1,0,1], [0,1,0,1], [0,0,1,1], [1,0,1,1] ];
+   var democolors = [ [0.8, 0.8, 0.8, 1], [0.8, 0.8, 0.8, 1], [0.8, 0.8, 0.8, 1], [0.8, 0.8, 0.8, 1], [0.8, 0.8, 0.8, 1], [0.8, 0.8, 0.8, 1] ];
+
+    for ( var i = 0; i < indices.length; ++i ) {
+        points.push( cyl_vertices[indices[i]] );
+        //colors.push( cyl_colors[indices[i]] );
+        colors.push( democolors[i] );
+    }
 }

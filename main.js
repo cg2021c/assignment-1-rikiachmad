@@ -78,15 +78,12 @@ function main(){
     quad(0, NumSides-1, 2*NumSides-1, NumSides, points2, colors2, cyl_vertices2);
 
     var len = 6 * NumSides;
-    console.log(len);
     // Cube
     colorCube();
 
-    console.log(pointsC);
     var vertices = [...points, ...points2, ...pointsC];
     var totcolors = [...colors, ...colors2, ...colorsC];
     var cubeLen = pointsC.length;
-    console.log(vertices.length);
 
     var cBuffer = gl.createBuffer();
     gl.bindBuffer( gl.ARRAY_BUFFER, cBuffer );
@@ -138,9 +135,17 @@ function main(){
     var fragmentShaderSource = `
         precision mediump float;
         varying vec4 fColor;
-
+        uniform vec3 uAmbientConstant;   // Represents the light color
+        uniform float uAmbientIntensity;
+        
         void main() {
-            gl_FragColor = fColor;
+            // Calculate the ambient effect
+            vec3 ambient = uAmbientConstant * uAmbientIntensity;
+            vec3 phong = ambient; // + diffuse + specular;
+
+            vec3 resColor = vec3(fColor);
+            gl_FragColor = vec4(resColor * phong, 1.);
+           // gl_FragColor = fColor;
         }
     `;
     
@@ -181,7 +186,10 @@ function main(){
     gl.enableVertexAttribArray( vPosition );
 
     thetaLoc = gl.getUniformLocation(shaderProgram, "theta"); 
-    gl.clearColor( 0.2, 0.2, 0.2, 1.0 );
+    gl.clearColor( 0.8, 0.8, 0.8, 1.0 );
+
+    const uAmbientConstant = gl.getUniformLocation(shaderProgram, "uAmbientConstant");
+    const uAmbientIntensity = gl.getUniformLocation(shaderProgram, "uAmbientIntensity");
     
     function render()
     {
@@ -190,6 +198,9 @@ function main(){
         gl.useProgram(shaderProgram);
         gl.uniform3fv(thetaLoc, theta);
         const u_matrix = gl.getUniformLocation(shaderProgram, "u_matrix");
+           // Lighting and Shading
+
+        
         const leftObject = [1., 0., 0., 0.,
                 0., 1., 0., 0.,
                 0., 0., 1., 0.,
@@ -204,16 +215,25 @@ function main(){
             0., 1., 0., 0.,
             0., 0., 1., 0.,
             0, 0, 0, 1.];
+
+        //gl.uniform3fv(uAmbientConstant, [1.0, 0.5, 0.0]); // orange light
+        gl.uniform3fv(uAmbientConstant, [1.0, 1.0, 1.0]); // white light
+        gl.uniform1f(uAmbientIntensity, 0.293); // 29% of light
         gl.uniformMatrix4fv(u_matrix, false, leftObject);
         gl.drawArrays( gl.TRIANGLES, 0, len );
 
+        
         gl.uniform3fv(thetaLoc, theta2);
+        gl.uniform3fv(uAmbientConstant, [1.0, 1.0, 1.0]); // white light
+        gl.uniform1f(uAmbientIntensity, 0.293); // 29% of light
         gl.uniformMatrix4fv(u_matrix, false, rightObject);
         gl.drawArrays( gl.TRIANGLES, len, len );
         
         theta3[0]+=2;
         theta3[1]+=2;
         gl.uniform3fv(thetaLoc, theta3);
+        gl.uniform3fv(uAmbientConstant, [1.0, 1.0, 1.0]); // white light
+        gl.uniform1f(uAmbientIntensity, 1); // 100% of light
         gl.uniformMatrix4fv(u_matrix, false, cubeObject);
         gl.drawArrays( gl.TRIANGLES, 2 * len, cubeLen );
         requestAnimationFrame( render );
@@ -272,7 +292,6 @@ function square(a, b, c, d)
 		[ 1, 1, 1, 1.0 ],  // magenta
         [ 1, 1, 1, 1.0 ],  // blue
         [ 1, 1, 1, 1.0 ],   // white
-
     ];
 
     // Partion the square into two triangles in order for

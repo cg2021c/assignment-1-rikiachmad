@@ -7,9 +7,10 @@ var points2 = [];
 var colors2 = [];
 var pointsC = [];
 var colorsC = [];
-
+var normals = [];
+var normals2 = [];
 // rotation stuff
-var theta = [ 220, 0, 0 ];
+var theta = [ 140, 0, 0 ];
 var theta2 = [ -5, 0, 0 ];
 var theta3 = [ 30, 5, 0 ];
 
@@ -47,9 +48,9 @@ function main(){
     }
 
     for(var i_side = 0; i_side < NumSides-1; i_side++) {
-        quad(i_side+1, i_side, NumSides+i_side, NumSides+i_side+1, points, colors,cyl_vertices);
+        quad(i_side+1, i_side, NumSides+i_side, NumSides+i_side+1, points, colors,cyl_vertices, normals);
     }
-    quad(0, NumSides-1, 2*NumSides-1, NumSides, points, colors,cyl_vertices);
+    quad(0, NumSides-1, 2*NumSides-1, NumSides, points, colors,cyl_vertices, normals);
 
     // Gelas Kanan
     var x2, z2;
@@ -73,9 +74,9 @@ function main(){
     }
 
     for(var i_side = 0; i_side < NumSides-1; i_side++) {
-        quad(i_side+1, i_side, NumSides+i_side, NumSides+i_side+1, points2, colors2, cyl_vertices2);
+        quad(i_side+1, i_side, NumSides+i_side, NumSides+i_side+1, points2, colors2, cyl_vertices2, normals2);
     }
-    quad(0, NumSides-1, 2*NumSides-1, NumSides, points2, colors2, cyl_vertices2);
+    quad(0, NumSides-1, 2*NumSides-1, NumSides, points2, colors2, cyl_vertices2, normals2);
 
     var len = 6 * NumSides;
     // Cube
@@ -83,7 +84,12 @@ function main(){
 
     var vertices = [...points, ...points2, ...pointsC];
     var totcolors = [...colors, ...colors2, ...colorsC];
+    var totnormals = [...normals, ...normals2];
     var cubeLen = pointsC.length;
+
+    var nBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, nBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, flatten(totnormals), gl.STATIC_DRAW);
 
     var cBuffer = gl.createBuffer();
     gl.bindBuffer( gl.ARRAY_BUFFER, cBuffer );
@@ -92,8 +98,11 @@ function main(){
     var vertexShaderSource = `
     attribute  vec4 vPosition;
     attribute  vec4 vColor;
+    attribute  vec3 vNormal;
+
     varying vec4 fColor;
-    
+    varying vec3 fNormal;
+
     uniform vec3 theta;
     uniform mat4 u_matrix;
     void main() {
@@ -128,6 +137,7 @@ function main(){
         );
 
         fColor = vColor;
+        fNormal = vNormal;
         gl_Position = dilationMatrix * rz * ry * rx * u_matrix * vPosition;
      } 
     `;
@@ -135,17 +145,24 @@ function main(){
     var fragmentShaderSource = `
         precision mediump float;
         varying vec4 fColor;
+        varying vec3 fNormal;
         uniform vec3 uAmbientConstant;   // Represents the light color
         uniform float uAmbientIntensity;
-        
+        uniform vec3 uDiffuseConstant;  // Represents the light color
+        uniform vec3 uLight;
         void main() {
             // Calculate the ambient effect
             vec3 ambient = uAmbientConstant * uAmbientIntensity;
-            vec3 phong = ambient; // + diffuse + specular;
 
+            // Calculate the diffuse effect
+            vec3 normalizedNormal = normalize(fNormal);
+            vec3 normalizedLight = normalize(uLight);
+            vec3 diffuse = uDiffuseConstant * max(dot(normalizedNormal, normalizedLight), 0.0);
+            vec3 phong = ambient + diffuse; // + specular;
+
+            // Apply the shading
             vec3 resColor = vec3(fColor);
             gl_FragColor = vec4(resColor * phong, 1.);
-           // gl_FragColor = fColor;
         }
     `;
     
@@ -180,22 +197,32 @@ function main(){
     gl.bindBuffer( gl.ARRAY_BUFFER, vBuffer );
     gl.bufferData( gl.ARRAY_BUFFER, flatten(vertices), gl.STATIC_DRAW );
     
-    gl.bindBuffer( gl.ARRAY_BUFFER, vBuffer );
     var vPosition = gl.getAttribLocation( shaderProgram, "vPosition" );
     gl.vertexAttribPointer( vPosition, 3, gl.FLOAT, false, 0, 0 );
     gl.enableVertexAttribArray( vPosition );
+
+    var vNormal = gl.getAttribLocation( shaderProgram, "vNormal" );
+    gl.vertexAttribPointer( vNormal, 3, gl.FLOAT, false, 0, 0 );
+    gl.enableVertexAttribArray( vNormal );
 
     thetaLoc = gl.getUniformLocation(shaderProgram, "theta"); 
     gl.clearColor( 0.8, 0.8, 0.8, 1.0 );
 
     const uAmbientConstant = gl.getUniformLocation(shaderProgram, "uAmbientConstant");
     const uAmbientIntensity = gl.getUniformLocation(shaderProgram, "uAmbientIntensity");
+
+    // DIFFUSE
+    var uDiffuseConstant = gl.getUniformLocation(shaderProgram, "uDiffuseConstant");
+    var uLight = gl.getUniformLocation(shaderProgram, "uLight");
+    //var uNormalModel = gl.getUniformLocation(shaderProgram, "uNormalModel");
+
     
     function render()
     {
         gl.enable(gl.DEPTH_TEST);
         gl.clear( gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         gl.useProgram(shaderProgram);
+       
         gl.uniform3fv(thetaLoc, theta);
         const u_matrix = gl.getUniformLocation(shaderProgram, "u_matrix");
            // Lighting and Shading
@@ -216,13 +243,15 @@ function main(){
             0., 0., 1., 0.,
             0, 0, 0, 1.];
 
-        //gl.uniform3fv(uAmbientConstant, [1.0, 0.5, 0.0]); // orange light
+        gl.uniform3fv(uDiffuseConstant, [1.0, 1.0, 1.0]);   // white light
+        gl.uniform3fv(uLight, [1.2, 0.0, 0.0]);  // directional light from the left
         gl.uniform3fv(uAmbientConstant, [1.0, 1.0, 1.0]); // white light
         gl.uniform1f(uAmbientIntensity, 0.293); // 29% of light
         gl.uniformMatrix4fv(u_matrix, false, leftObject);
         gl.drawArrays( gl.TRIANGLES, 0, len );
-
         
+        gl.uniform3fv(uDiffuseConstant, [1.0, 1.0, 1.0]);   // white light
+        gl.uniform3fv(uLight, [-1.2, 0.0, 0.0]);  // directional light from the left
         gl.uniform3fv(thetaLoc, theta2);
         gl.uniform3fv(uAmbientConstant, [1.0, 1.0, 1.0]); // white light
         gl.uniform1f(uAmbientIntensity, 0.293); // 29% of light
@@ -241,7 +270,7 @@ function main(){
     render();
 }
 
-function quad(a, b, c, d, points, colors, cyl_vertices) 
+function quad(a, b, c, d, points, colors, cyl_vertices, normals) 
 {
     // We need to parition the quad into two triangles in order for
     // WebGL to be able to render it.  In this case, we create two
@@ -250,13 +279,32 @@ function quad(a, b, c, d, points, colors, cyl_vertices)
     //vertex color assigned by the index of the vertex
 
     var indices = [ a, b, c, a, c, d ];
-   //  var democolors = [ [0,0,0,1], [1,0,0,1], [1,1,0,1], [0,1,0,1], [0,0,1,1], [1,0,1,1] ];
-   var democolors = [ [0.8, 0.8, 0.8, 1], [0.8, 0.8, 0.8, 1], [0.8, 0.8, 0.8, 1], [0.8, 0.8, 0.8, 1], [0.8, 0.8, 0.8, 1], [0.8, 0.8, 0.8, 1] ];
+    // var democolors = [ [0,0,0,1], [1,0,0,1], [1,1,0,1], [0,1,0,1], [0,0,1,1], [1,0,1,1] ];
+    var democolors = [ [1, 1,1, 1], [1, 1,1, 1], [1, 1,1, 1], [1, 1,1, 1], [1, 1,1, 1], [1, 1,1, 1] ];
+
+   var normalX;
+   var normalY;
+   var normalZ;
+   // p3 = c , p1 = a, p2 = b --> A = p3 - p2
+   // A = c - a
+   var Ax = cyl_vertices[indices[2]][0] - cyl_vertices[indices[0]][0];
+   var Ay = cyl_vertices[indices[2]][1] - cyl_vertices[indices[0]][1];
+   var Az = cyl_vertices[indices[2]][2] - cyl_vertices[indices[0]][2];
+
+   // B = b - a
+   var Bx = cyl_vertices[indices[1]][0] - cyl_vertices[indices[0]][0];
+   var By = cyl_vertices[indices[1]][1] - cyl_vertices[indices[0]][1];
+   var Bz = cyl_vertices[indices[1]][2] - cyl_vertices[indices[0]][2];
+
+   normalX = Ay * Bz - Az * By;
+   normalY = Az * Bx - Ax * Bz;
+   normalZ = Ax * By - Ay * Bx;
 
     for ( var i = 0; i < indices.length; ++i ) {
         points.push( cyl_vertices[indices[i]] );
         //colors.push( cyl_colors[indices[i]] );
         colors.push( democolors[i] );
+        normals.push(vec3(normalX, normalY, normalZ));
     }
 }
 

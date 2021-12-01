@@ -99,6 +99,7 @@ function main(){
     attribute  vec4 vPosition;
     attribute  vec4 vColor;
     attribute  vec3 vNormal;
+    varying vec3 vPositionDiffuse;
 
     varying vec4 fColor;
     varying vec3 fNormal;
@@ -139,24 +140,27 @@ function main(){
         fColor = vColor;
         fNormal = vNormal;
         gl_Position = dilationMatrix * rz * ry * rx * u_matrix * vPosition;
+        vPositionDiffuse = (u_matrix * vPosition).xyz;
      } 
     `;
 
     var fragmentShaderSource = `
         precision mediump float;
+        varying vec3 vPositionDiffuse;
         varying vec4 fColor;
         varying vec3 fNormal;
         uniform vec3 uAmbientConstant;   // Represents the light color
         uniform float uAmbientIntensity;
         uniform vec3 uDiffuseConstant;  // Represents the light color
-        uniform vec3 uLight;
+        uniform vec3 uLightPosition;
+        uniform mat3 uNormalModel;
         void main() {
             // Calculate the ambient effect
             vec3 ambient = uAmbientConstant * uAmbientIntensity;
 
             // Calculate the diffuse effect
             vec3 normalizedNormal = normalize(fNormal);
-            vec3 normalizedLight = normalize(uLight);
+            vec3 normalizedLight = normalize(uLightPosition - vPositionDiffuse);
             vec3 diffuse = uDiffuseConstant * max(dot(normalizedNormal, normalizedLight), 0.0);
             vec3 phong = ambient + diffuse; // + specular;
 
@@ -213,7 +217,7 @@ function main(){
 
     // DIFFUSE
     var uDiffuseConstant = gl.getUniformLocation(shaderProgram, "uDiffuseConstant");
-    var uLight = gl.getUniformLocation(shaderProgram, "uLight");
+    var uLightPosition = gl.getUniformLocation(shaderProgram, "uLightPosition");
     //var uNormalModel = gl.getUniformLocation(shaderProgram, "uNormalModel");
 
     
@@ -223,7 +227,6 @@ function main(){
         gl.clear( gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         gl.useProgram(shaderProgram);
        
-        gl.uniform3fv(thetaLoc, theta);
         const u_matrix = gl.getUniformLocation(shaderProgram, "u_matrix");
            // Lighting and Shading
 
@@ -244,14 +247,15 @@ function main(){
             0, 0, 0, 1.];
 
         gl.uniform3fv(uDiffuseConstant, [1.0, 1.0, 1.0]);   // white light
-        gl.uniform3fv(uLight, [1.2, 0.0, 0.0]);  // directional light from the left
+        gl.uniform3fv(uLightPosition, [6.0, 0.0, 0.0]); // light position
+        gl.uniform3fv(thetaLoc, theta);
         gl.uniform3fv(uAmbientConstant, [1.0, 1.0, 1.0]); // white light
         gl.uniform1f(uAmbientIntensity, 0.293); // 29% of light
         gl.uniformMatrix4fv(u_matrix, false, leftObject);
         gl.drawArrays( gl.TRIANGLES, 0, len );
         
         gl.uniform3fv(uDiffuseConstant, [1.0, 1.0, 1.0]);   // white light
-        gl.uniform3fv(uLight, [-1.2, 0.0, 0.0]);  // directional light from the left
+        gl.uniform3fv(uLightPosition, [-5.0, 0.0, 0.0]); // light position
         gl.uniform3fv(thetaLoc, theta2);
         gl.uniform3fv(uAmbientConstant, [1.0, 1.0, 1.0]); // white light
         gl.uniform1f(uAmbientIntensity, 0.293); // 29% of light
@@ -332,13 +336,13 @@ function square(a, b, c, d)
     ];
 
     var vertexColors = [
-        [ 1, 1, 1, 1.0 ],  // orange
-		[ 1, 1, 1, 1.0 ],  // cyan
-        [ 1, 1, 1, 1.0 ],  // red
-        [ 1, 1, 1, 1.0 ],  // yellow
-        [ 1, 1, 1, 1.0 ],  // green
-		[ 1, 1, 1, 1.0 ],  // magenta
-        [ 1, 1, 1, 1.0 ],  // blue
+        [ 1, 1, 1, 1.0 ],  // white
+		[ 1, 1, 1, 1.0 ],  // white
+        [ 1, 1, 1, 1.0 ],  // white
+        [ 1, 1, 1, 1.0 ],  // white
+        [ 1, 1, 1, 1.0 ],  // white
+		[ 1, 1, 1, 1.0 ],  // white
+        [ 1, 1, 1, 1.0 ],  // white
         [ 1, 1, 1, 1.0 ],   // white
     ];
 

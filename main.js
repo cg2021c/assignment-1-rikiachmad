@@ -256,6 +256,17 @@ function main(){
     var uViewerPosition = gl.getUniformLocation(shaderProgram, "uViewerPosition");
     var uShininessConstant = gl.getUniformLocation(shaderProgram, "uShininessConstant");
     
+    // Interactive graphics with keyboard
+    var changeY = 0;
+
+    function onKeydown(event) {
+        if (event.keyCode == 38 && changeY<2) changeY += 0.1; // Up
+        if (event.keyCode == 40 && changeY>-2) changeY -= 0.1; // Up
+        console.log(changeY);
+
+    }
+
+    document.addEventListener("keyup", onKeydown);
     function render()
     {
         gl.enable(gl.DEPTH_TEST);
@@ -279,10 +290,10 @@ function main(){
         const cubeObject = [1., 0., 0., 0.,
             0., 1., 0., 0.,
             0., 0., 1., 0.,
-            0, 0, 0, 1.];
+            0, changeY, 0, 1.];
 
         gl.uniform3fv(uDiffuseConstant, [1.0, 1.0, 1.0]);   // white light
-        gl.uniform3fv(uLightPosition, [6.0, -2.0, 4.0]); // light position
+        gl.uniform3fv(uLightPosition, [6.0, -2.0 - changeY, 4.0]); // light position
         gl.uniform3fv(thetaLoc, theta);
         gl.uniform3fv(uAmbientConstant, [1.0, 1.0, 1.0]); // white light
         gl.uniform1f(uAmbientIntensity, 0.293); // 29% of light
@@ -293,7 +304,7 @@ function main(){
         gl.drawArrays( gl.TRIANGLES, 0, len );
         
         gl.uniform3fv(uDiffuseConstant, [1.0, 1.0, 1.0]);   // white light
-        gl.uniform3fv(uLightPosition, [-6.0, 2.0, -4.0]); // light position
+        gl.uniform3fv(uLightPosition, [-6.0, 2.0 + changeY, -4.0]); // light position
         gl.uniform3fv(thetaLoc, theta2);
         gl.uniform3fv(uAmbientConstant, [1.0, 1.0, 1.0]); // white light
         gl.uniform1f(uAmbientIntensity, 0.293); // 29% of light
@@ -303,8 +314,8 @@ function main(){
         gl.uniformMatrix4fv(u_matrix, false, rightObject);
         gl.drawArrays( gl.TRIANGLES, len, len );
         
-        theta3[0]+=2;
-        theta3[1]+=2;
+        // theta3[0]+=2;
+        // theta3[1]+=2;
         gl.uniform3fv(thetaLoc, theta3);
         gl.uniform3fv(uAmbientConstant, [1.0, 1.0, 1.0]); // white light
         gl.uniform1f(uAmbientIntensity, 1); // 100% of light

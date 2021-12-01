@@ -106,6 +106,7 @@ function main(){
 
     uniform vec3 theta;
     uniform mat4 u_matrix;
+    uniform mat4 uView;
     void main() {
         // Compute the sines and cosines of theta for each of
         //   the three axes in one computation.
@@ -139,7 +140,7 @@ function main(){
 
         fColor = vColor;
         fNormal = vNormal;
-        gl_Position = dilationMatrix * rz * ry * rx * u_matrix * vPosition;
+        gl_Position = dilationMatrix * rz * ry * rx * uView * u_matrix * vPosition;
         vPositionDiffuse = (u_matrix * vPosition).xyz;
      } 
     `;
@@ -217,6 +218,7 @@ function main(){
 
     // Start using the context (analogy: start using the paints and the brushes)
     // gl.useProgram(shaderProgram);
+    gl.useProgram(shaderProgram);
 
     var vColor = gl.getAttribLocation( shaderProgram, "vColor" );
     gl.vertexAttribPointer( vColor, 4, gl.FLOAT, false, 0, 0 );
@@ -248,8 +250,8 @@ function main(){
     //var uNormalModel = gl.getUniformLocation(shaderProgram, "uNormalModel");
 
     var cameraX = 0.0;
-    var cameraY = 2.0
-    var cameraZ = 10.0;
+    var cameraY = 0.0
+    var cameraZ = 0.0;
 
     // SPECULAR
     var uSpecularConstant = gl.getUniformLocation(shaderProgram, "uSpecularConstant");
@@ -258,18 +260,35 @@ function main(){
     
     // Interactive graphics with keyboard
     var changeY = 0;
-
+    var uView = gl.getUniformLocation(shaderProgram, "uView");
+    var viewMatrix = glMatrix.mat4.create();
+    glMatrix.mat4.lookAt(
+        viewMatrix,
+        [cameraX, cameraY, cameraZ],    // the location of the eye or the camera
+        [cameraX, 0.0, 0.0],        // the point where the camera look at
+        [0.0, 1.0, 0.0]
+    );
     function onKeydown(event) {
         if (event.keyCode == 87 && changeY<2) changeY += 0.1; // Up
-        if (event.keyCode == 83 && changeY>-2) changeY -= 0.1; // Up
+        if (event.keyCode == 83 && changeY>-2) changeY -= 0.1; // Down
+        if (event.keyCode == 65 && cameraX>-0.3) cameraX -= 0.1; // Left
+        if (event.keyCode == 68 && cameraX<0.3) cameraX += 0.1; // Right
+        glMatrix.mat4.lookAt(
+            viewMatrix,
+            [cameraX, cameraY, cameraZ],    // the location of the eye or the camera
+            [cameraX, 0.0, -10],        // the point where the camera look at
+            [0.0, 1.0, 0.0]
+        );
+        console.log(cameraX, cameraY, cameraZ);
+        gl.uniformMatrix4fv(uView, false, viewMatrix);
     }
 
-    document.addEventListener("keyup", onKeydown);
+    document.addEventListener("keydown", onKeydown);
     function render()
     {
         gl.enable(gl.DEPTH_TEST);
         gl.clear( gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-        gl.useProgram(shaderProgram);
+
        
         const u_matrix = gl.getUniformLocation(shaderProgram, "u_matrix");
            // Lighting and Shading
@@ -290,8 +309,9 @@ function main(){
             0., 0., 1., 0.,
             0, changeY, 0, 1.];
 
+        gl.uniformMatrix4fv(uView, false, viewMatrix);
         gl.uniform3fv(uDiffuseConstant, [1.0, 1.0, 1.0]);   // white light
-        gl.uniform3fv(uLightPosition, [6.0, -2.0 - changeY, 4.0]); // light position
+        gl.uniform3fv(uLightPosition, [6.0, -2.0 - changeY * 2, 0.0]); // light position
         gl.uniform3fv(thetaLoc, theta);
         gl.uniform3fv(uAmbientConstant, [1.0, 1.0, 1.0]); // white light
         gl.uniform1f(uAmbientIntensity, 0.293); // 29% of light
@@ -302,7 +322,7 @@ function main(){
         gl.drawArrays( gl.TRIANGLES, 0, len );
         
         gl.uniform3fv(uDiffuseConstant, [1.0, 1.0, 1.0]);   // white light
-        gl.uniform3fv(uLightPosition, [-6.0, 2.0 + changeY, -4.0]); // light position
+        gl.uniform3fv(uLightPosition, [-6.0, 2.0 + changeY * 2, 0.0]); // light position
         gl.uniform3fv(thetaLoc, theta2);
         gl.uniform3fv(uAmbientConstant, [1.0, 1.0, 1.0]); // white light
         gl.uniform1f(uAmbientIntensity, 0.293); // 29% of light

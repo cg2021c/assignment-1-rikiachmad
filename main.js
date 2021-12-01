@@ -260,10 +260,8 @@ function main(){
     var changeY = 0;
 
     function onKeydown(event) {
-        if (event.keyCode == 38 && changeY<2) changeY += 0.1; // Up
-        if (event.keyCode == 40 && changeY>-2) changeY -= 0.1; // Up
-        console.log(changeY);
-
+        if (event.keyCode == 87 && changeY<2) changeY += 0.1; // Up
+        if (event.keyCode == 83 && changeY>-2) changeY -= 0.1; // Up
     }
 
     document.addEventListener("keyup", onKeydown);

@@ -154,15 +154,40 @@ function main(){
         uniform vec3 uDiffuseConstant;  // Represents the light color
         uniform vec3 uLightPosition;
         uniform mat3 uNormalModel;
+        uniform vec3 uSpecularConstant; // Represents the light color
+        uniform float uShininessConstant;
+        uniform vec3 uViewerPosition;
         void main() {
             // Calculate the ambient effect
             vec3 ambient = uAmbientConstant * uAmbientIntensity;
 
             // Calculate the diffuse effect
             vec3 normalizedNormal = normalize(fNormal);
-            vec3 normalizedLight = normalize(uLightPosition - vPositionDiffuse);
-            vec3 diffuse = uDiffuseConstant * max(dot(normalizedNormal, normalizedLight), 0.0);
-            vec3 phong = ambient + diffuse; // + specular;
+            vec3 vLight = uLightPosition - vPositionDiffuse;
+            vec3 normalizedLight = normalize(vLight);
+            vec3 diffuse = vec3(0., 0., 0.);
+
+            float cosTheta = max(dot(normalizedNormal, normalizedLight), 0.);
+
+            // Prepare the specular components
+            vec3 vReflector = 2.0 * cosTheta * fNormal - (vLight);
+            vec3 vViewer = uViewerPosition - vPositionDiffuse;
+
+            vec3 normalizedViewer = normalize(vViewer);
+            vec3 normalizedReflector = normalize(vReflector);
+            float cosPhi = max(dot(normalizedViewer, normalizedReflector), 0.);
+
+            vec3 specular = vec3(0., 0., 0.);
+
+            // Calculate the phong reflection effect
+            if (cosTheta > 0.) {
+                diffuse = uDiffuseConstant * cosTheta;
+            }
+            if (cosPhi > 0.) {
+                specular = uSpecularConstant * pow(cosPhi, uShininessConstant);
+            }
+
+            vec3 phong = ambient + diffuse + specular;
 
             // Apply the shading
             vec3 resColor = vec3(fColor);
@@ -210,7 +235,9 @@ function main(){
     gl.enableVertexAttribArray( vNormal );
 
     thetaLoc = gl.getUniformLocation(shaderProgram, "theta"); 
-    gl.clearColor( 0.8, 0.8, 0.8, 1.0 );
+    
+    gl.clearColor( 0.0, 0.0, 0.0, 1.0 );
+  //  gl.clearColor( 0.8, 0.8, 0.8, 1.0 );
 
     const uAmbientConstant = gl.getUniformLocation(shaderProgram, "uAmbientConstant");
     const uAmbientIntensity = gl.getUniformLocation(shaderProgram, "uAmbientIntensity");
@@ -220,6 +247,14 @@ function main(){
     var uLightPosition = gl.getUniformLocation(shaderProgram, "uLightPosition");
     //var uNormalModel = gl.getUniformLocation(shaderProgram, "uNormalModel");
 
+    var cameraX = 0.0;
+    var cameraY = 2.0
+    var cameraZ = 10.0;
+
+    // SPECULAR
+    var uSpecularConstant = gl.getUniformLocation(shaderProgram, "uSpecularConstant");
+    var uViewerPosition = gl.getUniformLocation(shaderProgram, "uViewerPosition");
+    var uShininessConstant = gl.getUniformLocation(shaderProgram, "uShininessConstant");
     
     function render()
     {
@@ -247,18 +282,24 @@ function main(){
             0, 0, 0, 1.];
 
         gl.uniform3fv(uDiffuseConstant, [1.0, 1.0, 1.0]);   // white light
-        gl.uniform3fv(uLightPosition, [6.0, 0.0, 0.0]); // light position
+        gl.uniform3fv(uLightPosition, [6.0, -2.0, 4.0]); // light position
         gl.uniform3fv(thetaLoc, theta);
         gl.uniform3fv(uAmbientConstant, [1.0, 1.0, 1.0]); // white light
         gl.uniform1f(uAmbientIntensity, 0.293); // 29% of light
+        gl.uniform3fv(uSpecularConstant, [1.0, 1.0, 1.0]);  // white light
+        gl.uniform3fv(uViewerPosition, [cameraX, cameraY, cameraZ]);
+        gl.uniform1f(uShininessConstant, 7.0); // Plastic object
         gl.uniformMatrix4fv(u_matrix, false, leftObject);
         gl.drawArrays( gl.TRIANGLES, 0, len );
         
         gl.uniform3fv(uDiffuseConstant, [1.0, 1.0, 1.0]);   // white light
-        gl.uniform3fv(uLightPosition, [-5.0, 0.0, 0.0]); // light position
+        gl.uniform3fv(uLightPosition, [-6.0, 2.0, -4.0]); // light position
         gl.uniform3fv(thetaLoc, theta2);
         gl.uniform3fv(uAmbientConstant, [1.0, 1.0, 1.0]); // white light
         gl.uniform1f(uAmbientIntensity, 0.293); // 29% of light
+        gl.uniform3fv(uSpecularConstant, [1.0, 1.0, 1.0]);  // white light
+        gl.uniform3fv(uViewerPosition, [cameraX, cameraY, cameraZ]);
+        gl.uniform1f(uShininessConstant, 150.0); // Metal object
         gl.uniformMatrix4fv(u_matrix, false, rightObject);
         gl.drawArrays( gl.TRIANGLES, len, len );
         
@@ -283,8 +324,8 @@ function quad(a, b, c, d, points, colors, cyl_vertices, normals)
     //vertex color assigned by the index of the vertex
 
     var indices = [ a, b, c, a, c, d ];
-    // var democolors = [ [0,0,0,1], [1,0,0,1], [1,1,0,1], [0,1,0,1], [0,0,1,1], [1,0,1,1] ];
-    var democolors = [ [1, 1,1, 1], [1, 1,1, 1], [1, 1,1, 1], [1, 1,1, 1], [1, 1,1, 1], [1, 1,1, 1] ];
+     //var democolors = [ [0,0,0,1], [1,0,0,1], [1,1,0,1], [0,1,0,1], [0,0,1,1], [1,0,1,1] ];
+     var democolors = [ [1, 1,1, 1], [1, 1,1, 1], [1, 1,1, 1], [1, 1,1, 1], [1, 1,1, 1], [1, 1,1, 1] ];
 
    var normalX;
    var normalY;

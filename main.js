@@ -332,8 +332,6 @@ function main(){
         gl.uniformMatrix4fv(u_matrix, false, rightObject);
         gl.drawArrays( gl.TRIANGLES, len, len );
         
-        // theta3[0]+=2;
-        // theta3[1]+=2;
         gl.uniform3fv(thetaLoc, theta3);
         gl.uniform3fv(uAmbientConstant, [1.0, 1.0, 1.0]); // white light
         gl.uniform1f(uAmbientIntensity, 1); // 100% of light

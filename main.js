@@ -107,6 +107,7 @@ function main(){
     uniform vec3 theta;
     uniform mat4 u_matrix;
     uniform mat4 uView;
+    uniform vec3 uChange;
     void main() {
         // Compute the sines and cosines of theta for each of
         //   the three axes in one computation.
@@ -130,7 +131,7 @@ function main(){
                         s.z,  c.z, 0.0, 0.0,
                         0.0,  0.0, 1.0, 0.0,
                         0.0,  0.0, 0.0, 1.0 );
-        float scale = 0.5;
+        float scale = uChange.y;
         mat4 dilationMatrix = mat4(
             scale, 0., 0., 0.,
             0., scale, 0., 0.,
@@ -140,7 +141,7 @@ function main(){
 
         fColor = vColor;
         fNormal = vNormal;
-        gl_Position = dilationMatrix * rz * ry * rx * u_matrix * vPosition;
+        gl_Position = dilationMatrix * rz * ry * rx * uView * u_matrix * vPosition;
         vPositionDiffuse = (u_matrix * vPosition).xyz;
      } 
     `;
@@ -252,21 +253,54 @@ function main(){
     var cameraX = 0.0;
     var cameraY = 0.0
     var cameraZ = 0.0;
+    var changeZ = 0;
+    var changeX = 0;
+    var changeY = 0;
 
+    var uChange = gl.getUniformLocation(shaderProgram, "uChange");
+    gl.uniform3f(uChange, changeX, changeY, 0);
+    
+    var uView = gl.getUniformLocation(shaderProgram, "uView");
+    var viewMatrix = glMatrix.mat4.create();
+    glMatrix.mat4.lookAt(
+        viewMatrix,
+        [cameraX, cameraY, cameraZ],    // the location of the eye or the camera
+        [cameraX, 0.0, 0.0],        // the point where the camera look at
+        [0.0, 1.0, 0.0]
+    );
     // SPECULAR
     var uSpecularConstant = gl.getUniformLocation(shaderProgram, "uSpecularConstant");
     var uViewerPosition = gl.getUniformLocation(shaderProgram, "uViewerPosition");
     var uShininessConstant = gl.getUniformLocation(shaderProgram, "uShininessConstant");
 
     // Interactive graphics with keyboard
+    var rotationMatrix = glMatrix.mat4.create();
+
     var switchOn = true;
     function onKeydown(event) {
         if (event.keyCode == 32) switchOn = !switchOn;
+        if (event.keyCode == 87 && changeZ>-1.8) changeZ-=0.1;  // W
+        if (event.keyCode == 83 && changeZ<2.1) changeZ+=0.1;  // S
+        if (event.keyCode == 65) changeX-=0.1;  // A
+        if (event.keyCode == 68) changeX+=0.1;  // D
+        if (event.keyCode == 38) changeY-=0.1;  // Up
+        if (event.keyCode == 40) changeY+=0.1;  // Down
+        if (event.keyCode == 37) cameraX-=0.1;  // Left
+        if (event.keyCode == 39) cameraX+=0.1;  // Right
+
+        gl.uniform3f(uChange, changeX, changeY, 0);
+        glMatrix.mat4.lookAt(
+            viewMatrix,
+            [cameraX, cameraY, cameraZ],    // the location of the eye or the camera
+            [cameraX, 0.0, -10],        // the point where the camera look at
+            [0.0, 1.0, 0.0]
+        );
+        gl.uniformMatrix4fv(uView, false, viewMatrix);
     }
     document.addEventListener("keydown", onKeydown);
     
     var leftDiffLight = [1.0, 1.0, 1.0];
-    var leftDiffPos = [6.0, -2.0, 0.0];
+    var leftDiffPos = [6.0, -2.0 + changeZ * 2, 0.0];
     var rightDiffLight = [1.0, 1.0, 1.0];
     var rightDiffPos = [-6.0, -2.0, 0.0];
     function render()
@@ -291,8 +325,10 @@ function main(){
         const cubeObject = [1., 0., 0., 0.,
             0., 1., 0., 0.,
             0., 0., 1., 0.,
-            0, 0, 0, 1.];
+            changeX, 0, changeZ, 1.];
         
+        leftDiffPos = [6.0, -2.0, 0.0 + changeZ * 2];
+        rightDiffPos = [-6.0, -2.0, 0.0  - changeZ * 2];
         if(!switchOn){
             leftDiffLight = [0, 0, 0];
             rightDiffLight = [0, 0, 0];
@@ -322,6 +358,7 @@ function main(){
         gl.uniformMatrix4fv(u_matrix, false, rightObject);
         gl.drawArrays( gl.TRIANGLES, len, len );
         
+        gl.uniform3fv(uViewerPosition, [cameraX, cameraY, cameraZ]);
         gl.uniform3fv(thetaLoc, theta3);
         gl.uniform3fv(uAmbientConstant, [1.0, 1.0, 1.0]); // white light
         gl.uniform1f(uAmbientIntensity, 1); // 100% of light

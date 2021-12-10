@@ -9,6 +9,8 @@ var pointsC = [];
 var colorsC = [];
 var normals = [];
 var normals2 = [];
+var plane = [];
+var planeColor = [];
 // rotation stuff
 var theta = [ 140, 0, 0 ];
 var theta2 = [ -5, 0, 0 ];
@@ -23,6 +25,9 @@ function main(){
     // Access the canvas through DOM: Document Object Model
     canvas = document.getElementById('myCanvas');   // The paper
     gl = canvas.getContext('webgl');                // The brush and the paints
+
+    // make plane
+    drawPlane();
 
     // Gelas Kiri
     var x, z;
@@ -82,10 +87,12 @@ function main(){
     // Cube
     colorCube();
 
-    var vertices = [...points, ...points2, ...pointsC];
-    var totcolors = [...colors, ...colors2, ...colorsC];
+    var vertices = [...plane,...points, ...points2, ...pointsC];
+    var totcolors = [...planeColor, ...colors, ...colors2, ...colorsC];
     var totnormals = [...normals, ...normals2];
     var cubeLen = pointsC.length;
+    var planeLen = plane.length;
+    console.log(plane, planeColor);
 
     var nBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, nBuffer);
@@ -239,7 +246,7 @@ function main(){
 
     thetaLoc = gl.getUniformLocation(shaderProgram, "theta"); 
     
-    gl.clearColor( 0.0, 0.0, 0.0, 1.0 );
+     gl.clearColor( 0.0, 0.0, 0.0, 1.0 );
   //  gl.clearColor( 0.8, 0.8, 0.8, 1.0 );
 
     const uAmbientConstant = gl.getUniformLocation(shaderProgram, "uAmbientConstant");
@@ -281,8 +288,8 @@ function main(){
         if (event.keyCode == 32) switchOn = !switchOn;
         if (event.keyCode == 87 && changeZ>-1.8) changeZ-=0.1;  // W
         if (event.keyCode == 83 && changeZ<2.1) changeZ+=0.1;  // S
-        if (event.keyCode == 65) changeX-=0.1;  // A
-        if (event.keyCode == 68) changeX+=0.1;  // D
+        if (event.keyCode == 65) changeX+=0.1;  // A
+        if (event.keyCode == 68) changeX-=0.1;  // D
         if (event.keyCode == 38) changeY-=0.1;  // Up
         if (event.keyCode == 40) changeY+=0.1;  // Down
         if (event.keyCode == 37) cameraX-=0.1;  // Left
@@ -326,7 +333,10 @@ function main(){
             0., 1., 0., 0.,
             0., 0., 1., 0.,
             changeX, 0, changeZ, 1.];
-        
+        const planeObject = [1., 0., 0., 0.,
+            0., 1., 0., 0.,
+            0., 0., 1., 0.,
+            0, 0, 0, 1.];
         leftDiffPos = [6.0, -2.0, 0.0 + changeZ * 2];
         rightDiffPos = [-6.0, -2.0, 0.0  - changeZ * 2];
         if(!switchOn){
@@ -336,6 +346,14 @@ function main(){
             leftDiffLight = [1.0, 1.0, 1.0];
             rightDiffLight = [1.0, 1.0, 1.0];
         }
+        //draw plane
+        gl.uniform3fv(uDiffuseConstant, [0, 0, 0]);   // white light
+        gl.uniform3fv(uLightPosition, [0, 0, 0]); // light position
+        gl.uniform3fv(uAmbientConstant, [1.0, 1.0, 1.0]); // white light
+        gl.uniform1f(uAmbientIntensity, 0.293); // 29% of light
+        gl.uniformMatrix4fv(u_matrix, false, planeObject);
+        gl.drawArrays( gl.TRIANGLES, 0, planeLen);
+
         gl.uniform3fv(uDiffuseConstant, leftDiffLight);   // white light
         gl.uniform3fv(uLightPosition, leftDiffPos); // light position
         gl.uniform3fv(thetaLoc, theta);
@@ -345,7 +363,7 @@ function main(){
         gl.uniform3fv(uViewerPosition, [cameraX, cameraY, cameraZ]);
         gl.uniform1f(uShininessConstant, 7.0); // Plastic object
         gl.uniformMatrix4fv(u_matrix, false, leftObject);
-        gl.drawArrays( gl.TRIANGLES, 0, len );
+        gl.drawArrays( gl.TRIANGLES, planeLen, len );
         
         gl.uniform3fv(uDiffuseConstant, rightDiffLight);   // white light
         gl.uniform3fv(uLightPosition, rightDiffPos); // light position
@@ -356,14 +374,14 @@ function main(){
         gl.uniform3fv(uViewerPosition, [cameraX, cameraY, cameraZ]);
         gl.uniform1f(uShininessConstant, 150.0); // Metal object
         gl.uniformMatrix4fv(u_matrix, false, rightObject);
-        gl.drawArrays( gl.TRIANGLES, len, len );
+        gl.drawArrays( gl.TRIANGLES, len + planeLen, len );
         
         gl.uniform3fv(uViewerPosition, [cameraX, cameraY, cameraZ]);
         gl.uniform3fv(thetaLoc, theta3);
         gl.uniform3fv(uAmbientConstant, [1.0, 1.0, 1.0]); // white light
         gl.uniform1f(uAmbientIntensity, 1); // 100% of light
         gl.uniformMatrix4fv(u_matrix, false, cubeObject);
-        gl.drawArrays( gl.TRIANGLES, 2 * len, cubeLen );
+        gl.drawArrays( gl.TRIANGLES, 2 * len + planeLen, cubeLen );
         requestAnimationFrame( render );
     }
     render();
@@ -409,15 +427,17 @@ function quad(a, b, c, d, points, colors, cyl_vertices, normals)
 
 function colorCube()
 {
-    square( 1, 0, 3, 2 );
-    square( 2, 3, 7, 6 );
-    square( 3, 0, 4, 7 );
-    square( 6, 5, 1, 2 );
-    square( 4, 5, 6, 7 );
-    square( 5, 4, 0, 1 );
+    square( 1, 0, 3, 2, 1, 1, 1, pointsC, colorsC);
+    square( 2, 3, 7, 6, 1, 1, 1, pointsC, colorsC);
+    square( 3, 0, 4, 7, 1, 1, 1, pointsC, colorsC);
+    square( 6, 5, 1, 2, 1, 1, 1, pointsC, colorsC);
+    square( 4, 5, 6, 7, 1, 1, 1, pointsC, colorsC);
+    square( 5, 4, 0, 1, 1, 1, 1, pointsC, colorsC);
 }
-
-function square(a, b, c, d) 
+function drawPlane(){
+    planeSquare( 1, 0, 3, 2, 9/100, 48/100, 147/100, plane, planeColor );
+}
+function square(a, b, c, d, red, greed, blue, pointsC,colorsC ) 
 {
     var verticesC = [
         vec3( -0.25, -0.25,  0.25 ),
@@ -431,14 +451,54 @@ function square(a, b, c, d)
     ];
 
     var vertexColors = [
-        [ 1, 1, 1, 1.0 ],  // white
-		[ 1, 1, 1, 1.0 ],  // white
-        [ 1, 1, 1, 1.0 ],  // white
-        [ 1, 1, 1, 1.0 ],  // white
-        [ 1, 1, 1, 1.0 ],  // white
-		[ 1, 1, 1, 1.0 ],  // white
-        [ 1, 1, 1, 1.0 ],  // white
-        [ 1, 1, 1, 1.0 ],   // white
+        [ red, greed, blue, 1.0 ],  // white
+		[ red, greed, blue, 1.0 ],  // white
+        [ red, greed, blue, 1.0 ],  // white
+        [ red, greed, blue, 1.0 ],  // white
+        [ red, greed, blue, 1.0 ],  // white
+		[ red, greed, blue, 1.0 ],  // white
+        [ red, greed, blue, 1.0 ],  // white
+        [ red, greed, blue, 1.0 ],   // white
+    ];
+
+    // Partion the square into two triangles in order for
+    // WebGL to be able to render it.      
+    // Vertex color assigned by the index of the vertex
+    
+    var indices = [ a, b, c, a, c, d ];
+
+    for ( var i = 0; i < indices.length; ++i ) {
+        pointsC.push( verticesC[indices[i]] );
+        colorsC.push( vertexColors[indices[i]] );
+    
+        //for solid colored faces use 
+        //colorsC.push(vertexColors[a]);    
+    }
+}
+function planeSquare(a, b, c, d, red, greed, blue, pointsC,colorsC ){
+    x = 20;
+    y = 20;
+    z = -0.7;
+    var verticesC = [
+        vec3( -x, -y,  z ),
+        vec3( -x, y,  z ),
+        vec3(  x,  y,  z ),
+        vec3( x, -y,  z ),
+        // vec3( -x, -x, -x ),
+        // vec3( -x, x, -x ),
+        // vec3(  x,  x, -x ),
+        // vec3(  x, -x, -x )
+    ];
+
+    var vertexColors = [
+        [ red, greed, blue, 1.0 ],  // white
+		[ red, greed, blue, 1.0 ],  // white
+        [ red, greed, blue, 1.0 ],  // white
+        [ red, greed, blue, 1.0 ],  // white
+        [ red, greed, blue, 1.0 ],  // white
+		[ red, greed, blue, 1.0 ],  // white
+        [ red, greed, blue, 1.0 ],  // white
+        [ red, greed, blue, 1.0 ],   // white
     ];
 
     // Partion the square into two triangles in order for

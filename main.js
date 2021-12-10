@@ -257,12 +257,22 @@ function main(){
     var uSpecularConstant = gl.getUniformLocation(shaderProgram, "uSpecularConstant");
     var uViewerPosition = gl.getUniformLocation(shaderProgram, "uViewerPosition");
     var uShininessConstant = gl.getUniformLocation(shaderProgram, "uShininessConstant");
+
+    // Interactive graphics with keyboard
+    var switchOn = true;
+    function onKeydown(event) {
+        if (event.keyCode == 32) switchOn = !switchOn;
+    }
+    document.addEventListener("keydown", onKeydown);
     
+    var leftDiffLight = [1.0, 1.0, 1.0];
+    var leftDiffPos = [6.0, -2.0, 0.0];
+    var rightDiffLight = [1.0, 1.0, 1.0];
+    var rightDiffPos = [-6.0, -2.0, 0.0];
     function render()
     {
         gl.enable(gl.DEPTH_TEST);
         gl.clear( gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
        
         const u_matrix = gl.getUniformLocation(shaderProgram, "u_matrix");
            // Lighting and Shading
@@ -282,24 +292,31 @@ function main(){
             0., 1., 0., 0.,
             0., 0., 1., 0.,
             0, 0, 0, 1.];
-
-        gl.uniform3fv(uDiffuseConstant, [1.0, 1.0, 1.0]);   // white light
-        gl.uniform3fv(uLightPosition, [6.0, -2.0, 0.0]); // light position
+        
+        if(!switchOn){
+            leftDiffLight = [0, 0, 0];
+            rightDiffLight = [0, 0, 0];
+        }else{
+            leftDiffLight = [1.0, 1.0, 1.0];
+            rightDiffLight = [1.0, 1.0, 1.0];
+        }
+        gl.uniform3fv(uDiffuseConstant, leftDiffLight);   // white light
+        gl.uniform3fv(uLightPosition, leftDiffPos); // light position
         gl.uniform3fv(thetaLoc, theta);
         gl.uniform3fv(uAmbientConstant, [1.0, 1.0, 1.0]); // white light
         gl.uniform1f(uAmbientIntensity, 0.293); // 29% of light
-        gl.uniform3fv(uSpecularConstant, [1.0, 1.0, 1.0]);  // white light
+        gl.uniform3fv(uSpecularConstant,leftDiffLight);  // white light
         gl.uniform3fv(uViewerPosition, [cameraX, cameraY, cameraZ]);
         gl.uniform1f(uShininessConstant, 7.0); // Plastic object
         gl.uniformMatrix4fv(u_matrix, false, leftObject);
         gl.drawArrays( gl.TRIANGLES, 0, len );
         
-        gl.uniform3fv(uDiffuseConstant, [1.0, 1.0, 1.0]);   // white light
-        gl.uniform3fv(uLightPosition, [-6.0, 2.0, 0.0]); // light position
+        gl.uniform3fv(uDiffuseConstant, rightDiffLight);   // white light
+        gl.uniform3fv(uLightPosition, rightDiffPos); // light position
         gl.uniform3fv(thetaLoc, theta2);
         gl.uniform3fv(uAmbientConstant, [1.0, 1.0, 1.0]); // white light
         gl.uniform1f(uAmbientIntensity, 0.293); // 29% of light
-        gl.uniform3fv(uSpecularConstant, [1.0, 1.0, 1.0]);  // white light
+        gl.uniform3fv(uSpecularConstant, rightDiffLight);  // white light
         gl.uniform3fv(uViewerPosition, [cameraX, cameraY, cameraZ]);
         gl.uniform1f(uShininessConstant, 150.0); // Metal object
         gl.uniformMatrix4fv(u_matrix, false, rightObject);
